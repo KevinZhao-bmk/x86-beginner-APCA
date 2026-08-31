@@ -32,7 +32,7 @@ lea rdx, [rel array]
 push rax
 call picknum
 ;this time,picknum access a array and fill the arry with all nums it get
-mov qword [arraysize], rax
+mov qword [rel arraysize], rax
 pop rax
 
 ;for now we successfully input the buffer and pickup nums to the array
@@ -43,11 +43,18 @@ lea rdi, [rel array]
 lea rsi, [rel arraysize]
 mov rdx, r12
 call pop_sort
-;assuming we do the sort,next step is to output the array
-;(accually not check yet)
+;can't believe i have done this
+;so let's just output the array,wuuuuuuuuuuuh
 
-;oh damn we must add it 48d to every num or it can't be seen
-;fork all this really drive me crazy
+;for the output ,rdi<-buffer,rsi<-array,rdx<-arraylen
+;seemed i haven't done any error check 
+;but who cares, errors didn't hurt me
+lea rdi, [rel buffer]
+lea rsi, [rel array]
+lea rdx, [rel arraysize];maybe i should push rax,but seemed rax didn't store some usefull data
+call output
+;so if i call a cpp function, maybe i should push some registers
+;so just push at the time i use cpp functions x)
 
 done:
 mov rax, 60d
@@ -67,10 +74,10 @@ je descend
 cmp r8b, 68d
 je descend
 ascend:
-mov rax, 1
+xor rax, rax
 jmp deorad
 descend:
-xor rax, rax
+mov rax, 1
 deorad:
 pop rbp
 ret
@@ -87,7 +94,7 @@ xor rbx, rbx
 xor r8, r8;r8 would be the buffer of the buffer
 pick:
 ;notise that array: resq 512
-;so you need to *8
+;so i need to *8
 cmp rcx, rsi
 ja picknumdone;to check if rcx go out
 
@@ -123,30 +130,31 @@ pop rbp
 ret
 
 pop_sort:;so the rdi would be the array
-push rbp;the rsi would be the arraysize
+push rbp;the rsi would be the &arraysize
 mov rbp, rsp;the rdx would  be r12, 1:means ascend
 xor r8, r8;r8 would be the i
 xor r9, r9;j
 ilay:;how about pack compare into another function?
+cmp r8, qword [rsi]
+jae ilaydone
 lea rax, qword [array + r8*8]
 mov r9, r8
+inc r9
 jlay:;this would be the worst idea i could ever come up with
+cmp r9, qword [rsi]
+jae jlaydone
 push rdi
 push rsi
 mov rdi, rax
 lea rsi, qword [array + r9*8]
 call compare
-pop rdi
-pop rsi
+pop rsi 
+pop rdi 
 inc r9
-cmp r9, rsi
-jae jlaydone
 jmp jlay
 
 jlaydone:
 inc r8 
-cmp r8, rsi
-jae ilaydone
 jmp ilay
 
 ilaydone:
@@ -170,7 +178,7 @@ swapascend:
 cmp r13, r14
 jb swapdone
 mov qword [rdi], r14
-mov qword [rsi], r13;mystical swap
+mov qword [rsi], r13;mystical swap;can accually work for unknow reason
 jmp swapdone
 
 swapdescend:
@@ -183,5 +191,59 @@ swapdone:
 pop r14
 pop r13
 pop r12
+pop rbp
+ret
+
+output:;rdi<-buffer ,rsi<-array rdx<-&arraysize,
+push rbp
+mov rbp, rsp
+xor r8, r8;index of buffer
+xor r9, r9;index of array
+mov rcx, rdx;mov &arraysize to rcx temporaily x)))
+push rbx
+mov rbx, 10d
+preoutput:;damn this still have bugs
+mov rax, [rsi + 8*r9]
+divrax:
+xor rdx, rdx;does this necessary?
+div rbx
+add rdx, 48d
+mov byte [rdi + r8], dl
+inc r8
+cmp rax, 0
+jne divrax
+mov byte [rdi + r8], 32d
+inc r8
+inc r9
+cmp r9, qword [rcx]
+jae preoutputdone
+jmp preoutput
+
+preoutputdone:
+;a reverse is needed
+dec r8
+dec r8
+push r8
+xor r9, r9
+reverse:
+mov al, byte [rdi + r8]
+mov bl, byte [rdi + r9]
+mov byte [rdi + r8], bl 
+mov byte [rdi + r9], al
+inc r9
+dec r8
+cmp r9, r8
+jae outputdone
+jmp reverse
+
+outputdone:
+mov rax, 1
+mov rsi, rdi
+mov rdi, 1
+pop rdx
+inc rdx
+syscall
+
+pop rbx
 pop rbp
 ret
